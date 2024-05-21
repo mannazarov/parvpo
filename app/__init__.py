@@ -1,5 +1,5 @@
 from logging.handlers import RotatingFileHandler
-
+from redis import Redis
 from flask import Flask, request
 from config import Config
 import sqlite3
@@ -50,6 +50,7 @@ def create_app():
     def favicon():
         return '', 204
 
+    app.redis = Redis.from_url(app.config['REDIS_URL'])
 
     # Регистрация маршрутов
     from app.routes import bp as routes_bp

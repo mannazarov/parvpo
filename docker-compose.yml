@@ -9,8 +9,15 @@ services:
     environment:
       - SECRET_KEY=you-will-never-guess
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - web_logs:/var/log
+
+  redis:
+    image: "redis:alpine"
+    container_name: redis
+    ports:
+      - "6379:6379"
 
   rabbitmq:
     image: "rabbitmq:3-management"
