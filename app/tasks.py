@@ -26,4 +26,4 @@ def send_log_message(message):
         logging.debug("Message sent successfully")
         connection.close()
     except Exception as e:
-        logging.error("Failed to send log message: %s", e
+        logging.error("Failed to send log message: %s", e)
