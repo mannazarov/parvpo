@@ -1,76 +1,54 @@
-version: '3.8'
+version: '3.7'
 
 services:
-  loki:
-    image: grafana/loki:2.7.3
+  web:
+    build: .
+    container_name: todo_web
     ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=you-will-never-guess
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     volumes:
-      - ./loki-config.yaml:/etc/loki/local-config.yaml
-      - ./loki-data/wal:/loki/wal
-      - ./loki-data/index:/loki/index
-      - ./loki-data/cache:/loki/cache
-      - ./loki-data/chunks:/loki/chunks
-    networks:
-      - loki-network
+      - web_logs:/var/log
+
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
 
   promtail:
-    build:
-      context: .
-      dockerfile: Dockerfile.promtail
+    image: grafana/promtail:2.3.0
+    container_name: promtail
     volumes:
-      - ./promtail-config.yaml:/etc/promtail/promtail-config.yaml
-      - /var/log/flask:/var/log/flask
-    command: -config.file=/etc/promtail/promtail-config.yaml
-    networks:
-      - loki-network
+      - ./promtail-config.yaml:/etc/promtail/promtail.yaml
+      - web_logs:/var/log
+    command: -config.file=/etc/promtail/promtail.yaml
 
-
-
+  loki:
+    image: grafana/loki:2.3.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
 
   grafana:
-    image: grafana/grafana:8.4.3
+    image: grafana/grafana:8.3.0
+    container_name: grafana
     ports:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
-      - grafana-data:/var/lib/grafana
-    networks:
-      - loki-network
-
-  web:
-    build: .
-    ports:
-      - "5000:5000"
-    environment:
-      - FLASK_ENV=development
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/%2F
-    volumes:
-      - .:/app
-      - ./flask_logs:/var/log/flask
-    depends_on:
-      - rabbitmq
-      - loki
-    command: /bin/sh -c "mkdir -p /var/log/flask && python run.py"
-    networks:
-      - loki-network
-
-  rabbitmq:
-    image: "rabbitmq:3-management"
-    ports:
-      - "5673:5672"
-      - "15673:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-      RABBITMQ_DEFAULT_VHOST: /
-    networks:
-      - loki-network
+      - grafana-storage:/var/lib/grafana
 
 volumes:
-  grafana-data:
-
-networks:
-  loki-network:
+  grafana-storage:
+  web_logs:

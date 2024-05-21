@@ -1,8 +1,11 @@
+from logging.handlers import RotatingFileHandler
+
 from flask import Flask, request
 from config import Config
 import sqlite3
 import logging
-from logging.handlers import RotatingFileHandler
+from pythonjsonlogger import jsonlogger
+
 
 def create_app():
     app = Flask(__name__)
@@ -11,28 +14,42 @@ def create_app():
     # Инициализация базы данных
     init_db()
 
-    # Настройка логирования
-    handler = RotatingFileHandler('/var/log/flask/app.log', maxBytes=10000, backupCount=1)
-    handler.setLevel(logging.DEBUG)  # Изменено на DEBUG
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Настройка логирования в файл
+    handler = RotatingFileHandler('/var/log/app.log', maxBytes=200000, backupCount=10)
+    handler.setLevel(logging.DEBUG)
+
+    # Используем JSONFormatter для логирования в формате JSON
+    formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
     handler.setFormatter(formatter)
     app.logger.addHandler(handler)
+
+    # Настройка логирования werkzeug (HTTP-запросы)
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.DEBUG)
+    log.addHandler(handler)
 
     # Логирование ошибок
     @app.errorhandler(Exception)
     def handle_exception(e):
-        app.logger.error(f"An error occurred: {e}")
+        app.logger.error("An error occurred", exc_info=e)
         return str(e), 500
 
     @app.before_request
     def log_request_info():
-        app.logger.debug('Headers: %s', request.headers)
-        app.logger.debug('Body: %s', request.get_data())
+        app.logger.debug('Request received', extra={
+            'headers': dict(request.headers),
+            'body': request.get_data().decode('utf-8')
+        })
 
     @app.after_request
     def log_response_info(response):
-        app.logger.debug('Response: %s', response.status)
+        app.logger.debug('Response sent', extra={'status': response.status})
         return response
+
+    @app.route('/favicon.ico')
+    def favicon():
+        return '', 204
+
 
     # Регистрация маршрутов
     from app.routes import bp as routes_bp
@@ -41,6 +58,7 @@ def create_app():
     app.logger.info('App started')
 
     return app
+
 
 def init_db():
     conn = sqlite3.connect('tasks.db')
