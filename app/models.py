@@ -19,7 +19,7 @@ def add_task(title, description):
     conn.commit()
     task_id = cursor.lastrowid
     conn.close()
-    current_app.redis.delete('tasks')
+    #current_app.redis.delete('tasks')
     return task_id
 
 def get_tasks():
@@ -31,7 +31,7 @@ def get_tasks():
         tasks = cursor.fetchall()
         conn.close()
         tasks_json = json.dumps([dict(task) for task in tasks])
-        current_app.redis.set('tasks', tasks_json, ex=60)  # Кешируем на 60 секунд
+        #current_app.redis.set('tasks', tasks_json, ex=1000)  # Кешируем на 600 секунд
     else:
         tasks = json.loads(tasks)
     return tasks
@@ -50,6 +50,18 @@ def delete_task(task_id):
     cursor.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
     conn.commit()
     conn.close()
-    current_app.redis.delete('tasks')
+    #current_app.redis.delete('tasks')
 
+
+def populate_tasks(n=10000):
+    conn = get_db()
+    cursor = conn.cursor()
+    for i in range(n):
+        title = f"Task {i}"
+        description = f"Description for task {i}"
+        created_at = datetime.utcnow().isoformat()
+        cursor.execute('INSERT INTO tasks (title, description, created_at) VALUES (?, ?, ?)',
+                       (title, description, created_at))
+    conn.commit()
+    conn.close()
 

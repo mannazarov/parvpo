@@ -1,6 +1,7 @@
 from logging.handlers import RotatingFileHandler
 from redis import Redis
 from flask import Flask, request
+from app.models import get_tasks
 from config import Config
 import sqlite3
 import logging
@@ -15,7 +16,7 @@ def create_app():
     init_db()
 
     # Настройка логирования в файл
-    handler = RotatingFileHandler('/var/log/app.log', maxBytes=200000, backupCount=10)
+    handler = RotatingFileHandler('app.log', maxBytes=200000, backupCount=10)
     handler.setLevel(logging.DEBUG)
 
     # Используем JSONFormatter для логирования в формате JSON
@@ -50,7 +51,14 @@ def create_app():
     def favicon():
         return '', 204
 
-    app.redis = Redis.from_url(app.config['REDIS_URL'])
+    #app.redis = Redis.from_url(app.config['REDIS_URL'])
+
+    # Прогрев кэша при старте
+#    @app.before_first_request
+ #   def warm_up_cache():
+  #      with app.app_context():
+   #         get_tasks()
+
 
     # Регистрация маршрутов
     from app.routes import bp as routes_bp
